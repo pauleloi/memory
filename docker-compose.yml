@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  memory-app:
+    image: <darkpolozx>/memory:latest
+    container_name: memory-container
+    ports:
+      - "80:80"
+    environment:
+      - ENV_VAR_NAME=value
+    volumes:
+      - ./data:/data
+    restart: always
+

@@ -1,0 +1,63 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches:
+      - develop
+
+jobs:
+  test-memory:
+    runs-on: self-hosted
+    steps:
+      - name: clone code
+        uses: actions/checkout@v2
+
+      - name: Installe file
+        run: sudo apt-get update && sudo apt-get install -y file
+
+      - name: Test files JPEG
+        run: |
+          for file in $(find . -name "*.jpg"); do
+            file "$file"
+          done
+
+  build-memory:
+    needs: test-memory
+    runs-on: self-hosted
+    steps:
+      - name: clone code
+        uses: actions/checkout@v2
+
+      - name: image Docker Build
+        run: docker build -t <darkpolozx>/memory .
+
+  push-memory:
+    needs: build-memory
+    runs-on: self-hosted
+    steps:
+      - name: clone code
+        uses: actions/checkout@v2
+
+      - name: connection Docker Hub
+        run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+
+      - name: Push image Docker
+        run: docker push <darkpolozx>/memory
+
+  deploy-memory:
+      needs: push-memory
+      runs-on: self-hosted
+      steps:
+        - name: clone code
+          uses: actions/checkout@v2
+
+        - name: SSH machine et deploiement
+          env:
+            SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+            SSH_HOST: ${{ secrets.SSH_HOST }}
+            SSH_USER: ${{ secrets.SSH_USER }}
+          run: |
+            echo "$SSH_PRIVATE_KEY" > key.pem
+            chmod 600 key.pem
+            ssh -o StrictHostKeyChecking=no -i key.pem $SSH_USER@$SSH_HOST 'docker pull <darkpolozx>/memory && docker run -d -p 80:80 <darkpolozx>/memory'
+
